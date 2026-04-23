@@ -23,7 +23,7 @@ ist = pytz.timezone('Asia/Kolkata')
 app = Flask(__name__)
 
 # 🔐 API KEY (set in env)
-client = Groq(api_key="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")
+client = Groq(api_key="API KEY")
 
 # =========================
 # GLOBAL DATA STORE
