@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Trading Dashboard</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #0b0f17;
+    color: #e6edf3;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    height: 100vh;
+}
+
+/* LEFT PANEL */
+.left {
+    width: 60%;
+    padding: 30px;
+}
+
+/* RIGHT PANEL */
+.right {
+    width: 40%;
+    background: #111827;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid #1f2937;
+}
+
+/* HEADER */
+h2 {
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+/* CARD */
+.card {
+    background: linear-gradient(145deg, #111827, #0b1220);
+    border: 1px solid #1f2937;
+    border-radius: 16px;
+    padding: 25px;
+    width: 350px;
+    margin-top: 20px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.4);
+}
+
+/* SYMBOL */
+#symbol {
+    font-size: 18px;
+    color: #9ca3af;
+}
+
+/* PREDICTION */
+#prediction {
+    font-size: 36px;
+    font-weight: 600;
+    margin: 10px 0;
+}
+
+/* COLORS */
+.big {
+    color: #00ffae;
+}
+
+.small {
+    color: #ff4d6d;
+}
+
+/* METRICS */
+.metric {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+.metric span {
+    color: #9ca3af;
+}
+
+/* CHAT */
+.chat-box {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+}
+
+/* MESSAGE */
+.msg {
+    max-width: 85%;
+    margin: 10px;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.4;
+    white-space: pre-line;
+}
+
+.user {
+    background: #2563eb;
+    align-self: flex-end;
+}
+
+.bot {
+    background: #1f2937;
+    align-self: flex-start;
+}
+
+/* INPUT */
+.input-area {
+    display: flex;
+    border-top: 1px solid #1f2937;
+}
+
+input {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    outline: none;
+    background: #0b0f17;
+    color: white;
+}
+
+button {
+    padding: 12px 20px;
+    background: #2563eb;
+    border: none;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1d4ed8;
+}
+
+/* SCROLL */
+.chat-box::-webkit-scrollbar {
+    width: 5px;
+}
+.chat-box::-webkit-scrollbar-thumb {
+    background: #374151;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LEFT -->
+<div class="left">
+    <h2>📊 AI Candle Predictor</h2>
+
+    <div class="card">
+        <div id="symbol">--</div>
+
+        <div id="prediction">--</div>
+
+        <div class="metric">
+            <span>Confidence</span>
+            <div id="prob">--</div>
+        </div>
+
+        <div class="metric">
+            <span>LightGBM</span>
+            <div id="lgb">--</div>
+        </div>
+
+        <div class="metric">
+            <span>XGBoost</span>
+            <div id="xgb">--</div>
+        </div>
+
+        <div class="metric">
+            <span>Time</span>
+            <div id="time">--</div>
+        </div>
+    </div>
+</div>
+
+<!-- RIGHT CHAT -->
+<div class="right">
+    <div class="chat-box" id="chat"></div>
+
+    <div class="input-area">
+        <input id="msg" placeholder="Ask about market, trend, strategy..." />
+        <button onclick="sendMsg()">Send</button>
+    </div>
+</div>
+
+<script>
+
+// CHAT
+function addMsg(text, type) {
+    const div = document.createElement("div");
+    div.className = "msg " + type;
+    div.innerText = text;
+
+    const chat = document.getElementById("chat");
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+}
+
+// PREDICTION
+async function loadData() {
+    const res = await fetch("/predict");
+    const data = await res.json();
+
+    if(data.error) return;
+
+    document.getElementById("symbol").innerText = data.symbol;
+
+    const pred = document.getElementById("prediction");
+    pred.innerText = data.label;
+    pred.className = data.label.includes("BIG") ? "big" : "small";
+
+    document.getElementById("prob").innerText = data.prob.toFixed(3);
+    document.getElementById("lgb").innerText = data.lgb.toFixed(3);
+    document.getElementById("xgb").innerText = data.xgb.toFixed(3);
+    document.getElementById("time").innerText = data.time;
+
+    // AUTO CHAT
+    addMsg(`${data.symbol} → ${data.label} (Conf: ${data.prob.toFixed(2)})`, "user");
+    addMsg(data.explanation || "No explanation", "bot");
+}
+
+// MANUAL CHAT
+async function sendMsg() {
+    const input = document.getElementById("msg");
+    const text = input.value;
+    if(!text) return;
+
+    addMsg(text, "user");
+    input.value = "";
+
+    const res = await fetch("/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({message: text})
+    });
+
+    const data = await res.json();
+    addMsg(data.reply, "bot");
+}
+
+// AUTO REFRESH
+setInterval(loadData, 180000);
+loadData();
+
+</script>
+
+</body>
+</html>
